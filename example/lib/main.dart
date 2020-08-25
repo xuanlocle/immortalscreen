@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
-import 'package:flutter/services.dart';
 import 'package:immortalscreen/immortalscreen.dart';
+import 'package:rxdart/subjects.dart';
 
 void main() => runApp(MyApp());
 
@@ -12,45 +11,77 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
+  StreamController<bool> controllerScreenOn = BehaviorSubject();
 
   @override
   void initState() {
     super.initState();
-    initPlatformState();
+    controllerScreenOn = new StreamController();
+    Immortalscreen.setScreenAlwaysOn;
   }
 
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    try {
-      platformVersion = await Immortalscreen.platformVersion;
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = platformVersion;
-    });
+  @override
+  void dispose() {
+    super.dispose();
+    controllerScreenOn.close();
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Plugin example app'),
-        ),
-        body: Center(
-          child: Text('Running on: $_platformVersion\n'),
-        ),
-      ),
-    );
+        home: Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.orange,
+              title: Text('Immortal Screen'),
+            ),
+            body: Stack(children: <Widget>[
+              Positioned(
+                  left: 200,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: StreamBuilder(
+                      stream: controllerScreenOn.stream,
+                      builder: (context, snapshot) {
+                        bool status = true;
+                        if (snapshot.hasData) status = snapshot.data;
+                        return Container(
+                            color: status ? Colors.orange : Colors.grey);
+                      })),
+              Container(
+                  alignment: Alignment.center,
+                  child:
+                      Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                    Ink(
+                        color: Colors.orange,
+                        width: double.infinity,
+                        child: InkWell(
+                            splashColor: Colors.orangeAccent,
+                            onTap: () {
+                              Immortalscreen.setScreenAlwaysOn;
+                              controllerScreenOn.add(true);
+                            },
+                            child: Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(20.0),
+                                child: Text("Enable screen on",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold))))),
+                    SizedBox(height: 10.0),
+                    Ink(
+                        color: Colors.grey,
+                        width: double.infinity,
+                        child: InkWell(
+                            onTap: () {
+                              Immortalscreen.resetScreenAlwaysOn;
+                              controllerScreenOn.add(false);
+                            },
+                            child: Container(
+                                padding: EdgeInsets.all(20.0),
+                                child: Text("Disable screen on",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold)))))
+                  ]))
+            ])));
   }
 }
